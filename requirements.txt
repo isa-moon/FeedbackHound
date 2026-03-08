@@ -1,0 +1,8 @@
+streamlit
+praw
+pandas
+openpyxl
+requests
+markdown2
+pdfkit
+python-dotenv
