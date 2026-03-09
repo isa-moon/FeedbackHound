@@ -2,7 +2,7 @@
 
 FeedbackHound 是一个基于 Streamlit 的轻量 MVP，用于抓取 Reddit 社区帖子、预览与导出数据，并结合用户自行提供的 AI API Key 生成结构化中文分析报告。
 
-访问链接：https://feedbackhound.streamlit.app
+开箱即用：https://feedbackhound.streamlit.app
 
 ## 功能概览
 
