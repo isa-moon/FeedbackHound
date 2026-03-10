@@ -2,16 +2,26 @@
 
 import os
 
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def get_secret(key):
+    """优先从 st.secrets 读取，不可用时从 .env 读取。"""
+    try:
+        return st.secrets[key]
+    except Exception:
+        return os.getenv(key)
+
+
 APP_NAME = "FeedbackHound"
 APP_SLOGAN = "用户反馈抓取与 AI 分析工具"
 
-REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
-REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
-REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
+REDDIT_CLIENT_ID = get_secret("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = get_secret("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = get_secret("REDDIT_USER_AGENT")
 
 DEFAULT_MAX_POSTS = 100
 MAX_POSTS_LIMIT = 1000
