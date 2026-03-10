@@ -70,14 +70,26 @@ PDF 导出依赖本机安装 `wkhtmltopdf`。如果未安装，应用会保留 M
 
 ## 示例
 
-![Uploading 7579805fd71c581ffed6c1fe4f49302c.png…]()
+<img width="2574" height="1616" alt="微信图片_20260311004228_1444_8" src="https://github.com/user-attachments/assets/6f20e891-6d79-43cc-9e9e-9516534f1c87" />
 
-![Uploading a0eedc82d775966746cbd636dffe05c8.png…]()
+<img width="2574" height="1616" alt="微信图片_20260311005731_1454_8" src="https://github.com/user-attachments/assets/47d672d7-d0f8-4a39-b21b-984994e474de" />
 
-![Uploading a1f6dbb2eaa1c50cc2fe0ce809dd8e4c.png…]()
+<img width="2574" height="1616" alt="微信图片_20260311005722_1453_8" src="https://github.com/user-attachments/assets/4a3ace26-47ef-4a54-b750-af6cc7163205" />
 
-![Uploading d095ac393686692914e468f0cc80f0af.png…]()
+<img width="2574" height="1616" alt="微信图片_20260311005714_1452_8" src="https://github.com/user-attachments/assets/25e091fd-668d-4981-a3cf-ef24a341ce0f" />
 
-![Uploading ac077c8d6f644ef13ec8e1f1e827f721.png…]()
+竞品分析版：
 
-![Uploading 55d177a6b3b37bee0126fc06ee2447fd.png…]()
+<img width="2574" height="1616" alt="微信图片_20260311005704_1451_8" src="https://github.com/user-attachments/assets/14ead565-c2d9-4204-8463-43dd9f4dfc26" />
+
+<img width="2574" height="1616" alt="微信图片_20260311004706_1450_8" src="https://github.com/user-attachments/assets/2a8ff92e-d732-4c9b-9fa6-bc6737671ae6" />
+
+内容运营助手版：
+
+<img width="2574" height="1616" alt="微信图片_20260311004650_1449_8" src="https://github.com/user-attachments/assets/a9802b72-f2b0-4eeb-a075-e05928419d1b" />
+
+<img width="2574" height="1616" alt="微信图片_20260311004551_1448_8" src="https://github.com/user-attachments/assets/d1d73307-f3d5-4b67-87a1-3d41031408cf" />
+
+<img width="2574" height="1616" alt="微信图片_20260311004454_1447_8" src="https://github.com/user-attachments/assets/a34c8b1b-dca6-4e6d-be91-feb38ac171ec" />
+
+<img width="2574" height="1616" alt="微信图片_20260311004437_1446_8" src="https://github.com/user-attachments/assets/8aabcecd-54dd-4785-9175-d566dc9289f1" />
