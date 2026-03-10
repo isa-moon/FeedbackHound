@@ -68,7 +68,16 @@ PDF 导出依赖本机安装 `wkhtmltopdf`。如果未安装，应用会保留 M
 - 应用不会在错误信息中打印 API Key
 - 页面刷新后需重新填写 AI API Key
 
-## 产品截图
+## 示例
 
-<img width="2266" height="1494" alt="image" src="https://github.com/user-attachments/assets/b3584d37-0c67-47b1-8b6f-37f904fbe93d" />
+![Uploading 7579805fd71c581ffed6c1fe4f49302c.png…]()
 
+![Uploading a0eedc82d775966746cbd636dffe05c8.png…]()
+
+![Uploading a1f6dbb2eaa1c50cc2fe0ce809dd8e4c.png…]()
+
+![Uploading d095ac393686692914e468f0cc80f0af.png…]()
+
+![Uploading ac077c8d6f644ef13ec8e1f1e827f721.png…]()
+
+![Uploading 55d177a6b3b37bee0126fc06ee2447fd.png…]()
