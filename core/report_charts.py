@@ -56,10 +56,36 @@ def _find_json_block(text: str) -> tuple[Optional[str], Optional[tuple[int, int]
     return None, None
 
 
+_SCAFFOLD_BAR = re.compile(r"^\s*=+.*=+\s*$")
+_SCAFFOLD_HEAD = re.compile(
+    r"^\s*#{0,6}\s*(第[一二三]部分|.*结构化数据.*JSON|.*叙述报告.*Markdown)",
+    re.IGNORECASE,
+)
+
+
+def _clean_narrative(text: str) -> str:
+    """清理叙述中的脚手架残留：分隔条、分节标题，以及抽走 JSON 后悬空的尾部标题/分隔线。"""
+    lines = [
+        ln for ln in text.split("\n")
+        if not _SCAFFOLD_BAR.match(ln) and not _SCAFFOLD_HEAD.match(ln)
+    ]
+    out = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+    # 反复剥除尾部悬空的分隔线（---）与空标题（# 开头且其后无内容）
+    prev = None
+    while prev != out:
+        prev = out
+        out = re.sub(r"(?:\s*-{3,}\s*)+$", "", out).strip()
+        tail = out.split("\n")
+        if tail and tail[-1].lstrip().startswith("#"):
+            out = "\n".join(tail[:-1]).strip()
+    return out
+
+
 def extract_report_payload(text: str) -> tuple[Optional[dict], str]:
     """拆分 AI 输出：返回 (结构化数据 或 None, 叙述 Markdown)。
 
-    解析失败时降级为 (None, 原文)，绝不抛出，保证报告至少有文字。
+    解析失败时降级为 (None, 清理后的原文)，绝不抛出，保证报告至少有文字。
     """
     if not text:
         return None, ""
@@ -69,11 +95,11 @@ def extract_report_payload(text: str) -> tuple[Optional[dict], str]:
         try:
             data = json.loads(block)
         except json.JSONDecodeError:
-            return None, text.strip()
-        narrative = (text[:span[0]] + text[span[1]:]).strip()
+            return None, _clean_narrative(text)
+        narrative = _clean_narrative(text[:span[0]] + text[span[1]:])
         return data, narrative
 
-    return None, text.strip()
+    return None, _clean_narrative(text)
 
 
 # --------------------------------------------------------------------------
