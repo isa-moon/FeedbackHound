@@ -55,7 +55,6 @@ FeedbackHound 把这个流程自动化：
 ### 报告导出
 - **HTML（含图表）**：单文件自包含，plotly.js 内联，离线可打开、图表可交互，可在浏览器内另存为 PDF
 - **Markdown**：纯文字版，便于二次编辑
-- **PDF**：依赖本机 `wkhtmltopdf`，云端通常不可用，推荐使用 HTML
 
 ---
 
