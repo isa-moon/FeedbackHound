@@ -314,7 +314,23 @@ def comparison_radar(radar: Any, user_label: str, competitor_label: str) -> Opti
             bgcolor="rgba(0,0,0,0)",
         ),
     )
-    return _style(fig, height=380)
+    _style(fig, height=440)
+    # 该图分值由模型综合判断给出，缺少可复算的数据依据。
+    # 说明写进图表本身（而非页面），保证导出与截图时不丢失；
+    # 放在底部作脚注，避免与顶部图例重叠。
+    fig.add_annotation(
+        text="分值为模型综合判断的估计值，非抓取数据统计",
+        xref="paper", yref="paper", x=0, y=-0.10,
+        xanchor="left", yanchor="top", showarrow=False,
+        font=dict(family=_FONT, size=12, color="#8a8a8a"),
+    )
+    # 顶部留白加大，使绘图区连同图例整体下移，与标题拉开距离
+    fig.update_layout(
+        margin=dict(l=12, r=12, t=96, b=60),
+        title=dict(y=0.96, yanchor="top"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0),
+    )
+    return fig
 
 
 def engagement_scatter(dataframe: Optional[pd.DataFrame]) -> Optional["go.Figure"]:
