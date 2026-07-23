@@ -1,5 +1,6 @@
 streamlit
 praw==8.0.2
+plotly==5.24.1
 pandas
 openpyxl
 requests

@@ -13,6 +13,7 @@ from config import (
     SUPPORTED_AI_PROVIDERS,
 )
 from core.ai_analyzer import AIAnalyzerError, build_data_summary, call_ai_api
+from core.report_charts import extract_report_payload, render_competitor_charts
 from core.report_generator import (
     ReportGenerationError,
     build_markdown_report,
@@ -515,29 +516,31 @@ if dataframe is not None:
     analysis_type = st.radio("分析方向", ["竞品分析", "内容运营助手"], horizontal=True)
     analysis_subreddit = summary.get("subreddit", dataframe["subreddit"].iloc[0] if not dataframe.empty else "")
 
-    prompt = ""
+    prompt_template = ""
+    format_args = {}
     report_title = ""
     report_subtitle = f"社区：r/{analysis_subreddit} | 服务商：{provider_label}"
+    competitor_brand = ""
 
     if analysis_type == "竞品分析":
         user_brand = st.text_input("你的产品/品牌名称")
         competitor_brand = st.text_input("竞品名称")
-        prompt = COMPETITOR_ANALYSIS_PROMPT.format(
-            subreddit=analysis_subreddit,
-            user_brand=user_brand.strip() or "未提供",
-            competitor_brand=competitor_brand.strip() or "未提供",
-            data_summary="{data_summary}",
-        )
+        prompt_template = COMPETITOR_ANALYSIS_PROMPT
+        format_args = {
+            "subreddit": analysis_subreddit,
+            "user_brand": user_brand.strip() or "未提供",
+            "competitor_brand": competitor_brand.strip() or "未提供",
+        }
         report_title = "FeedbackHound 竞品分析报告"
     else:
         user_brand = st.text_input("你的品牌名称")
         target_audience = st.text_input("目标受众描述")
-        prompt = CONTENT_OPERATIONS_PROMPT.format(
-            subreddit=analysis_subreddit,
-            user_brand=user_brand.strip() or "未提供",
-            target_audience=target_audience.strip() or "未提供",
-            data_summary="{data_summary}",
-        )
+        prompt_template = CONTENT_OPERATIONS_PROMPT
+        format_args = {
+            "subreddit": analysis_subreddit,
+            "user_brand": user_brand.strip() or "未提供",
+            "target_audience": target_audience.strip() or "未提供",
+        }
         report_title = "FeedbackHound 内容运营洞察报告"
 
     if st.button("生成分析报告", type="primary", use_container_width=True):
@@ -549,10 +552,17 @@ if dataframe is not None:
 
             with st.spinner("正在生成分析报告，请稍候…"):
                 data_summary = build_data_summary(dataframe, analysis_subreddit)
-                final_prompt = prompt.format(data_summary=data_summary)
+                final_prompt = prompt_template.format(data_summary=data_summary, **format_args)
                 result = call_ai_api(provider, api_key, final_prompt, "")
-                markdown_report = build_markdown_report(report_title, report_subtitle, result)
+                payload, narrative = extract_report_payload(result)
+                markdown_report = build_markdown_report(report_title, report_subtitle, narrative or result)
                 st.session_state["analysis_report"] = markdown_report
+                st.session_state["analysis_payload"] = payload if analysis_type == "竞品分析" else None
+                st.session_state["analysis_kind"] = analysis_type
+                st.session_state["analysis_labels"] = {
+                    "user": user_brand.strip(),
+                    "competitor": competitor_brand.strip(),
+                }
                 st.session_state["analysis_markdown_name"] = generate_report_filename("report", "md")
                 st.session_state["analysis_pdf_error"] = ""
             st.success("分析完成。")
@@ -573,6 +583,17 @@ if dataframe is not None:
             """,
             unsafe_allow_html=True,
         )
+
+        if st.session_state.get("analysis_kind") == "竞品分析":
+            report_labels = st.session_state.get("analysis_labels", {})
+            st.subheader("数据看板")
+            render_competitor_charts(
+                st.session_state.get("analysis_payload"),
+                st.session_state.get("scraped_data"),
+                report_labels.get("user", ""),
+                report_labels.get("competitor", ""),
+            )
+
         st.markdown("<div class='fh-report-card'>", unsafe_allow_html=True)
         st.markdown(report)
         st.markdown("</div>", unsafe_allow_html=True)
