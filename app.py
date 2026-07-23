@@ -360,7 +360,7 @@ if st.button("开始抓取", type="primary", use_container_width=True):
         try:
             with st.status("准备抓取 Reddit 帖子", expanded=True) as status:
                 reddit = initialize_reddit()
-                status.write("Reddit 凭据加载并验证通过。")
+                status.write("Reddit 只读客户端已初始化。")
 
                 dataframe = fetch_posts(
                     reddit=reddit,

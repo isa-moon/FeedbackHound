@@ -51,9 +51,18 @@ def _normalize_date_range(start_date: Optional[date], end_date: Optional[date]) 
 
 
 def initialize_reddit() -> praw.Reddit:
-    """使用 .env 中的 Reddit 凭据初始化客户端，并进行轻量验证。"""
+    """使用凭据初始化只读 Reddit 客户端。
+
+    凭据来源见 config.get_secret：优先 Streamlit Secrets，其次本地 .env。
+    只读客户端不存在“已登录用户”，因此不能调用 reddit.user.me() 做校验——
+    在 PRAW 8 中该调用会在只读模式下抛出 ReadOnlyException。真正的凭据/网络
+    错误会在 fetch_posts 抓取时暴露并被捕获。
+    """
     if not REDDIT_CLIENT_ID or not REDDIT_CLIENT_SECRET or not REDDIT_USER_AGENT:
-        raise ScraperError("缺少 Reddit 凭据，请检查项目根目录下的 .env 配置。")
+        raise ScraperError(
+            "缺少 Reddit 凭据，请在 Streamlit Secrets（或本地 .env）中配置 "
+            "REDDIT_CLIENT_ID、REDDIT_CLIENT_SECRET、REDDIT_USER_AGENT。"
+        )
 
     try:
         reddit = praw.Reddit(
@@ -63,10 +72,9 @@ def initialize_reddit() -> praw.Reddit:
             check_for_async=False,
         )
         reddit.read_only = True
-        _ = reddit.user.me()
         return reddit
     except Exception as exc:
-        raise ScraperError("Reddit API 验证失败，请检查 .env 中的 Reddit 配置是否正确。") from exc
+        raise ScraperError("Reddit 客户端初始化失败，请检查 Reddit 凭据配置是否正确。") from exc
 
 
 def fetch_posts(

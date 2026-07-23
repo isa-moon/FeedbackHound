@@ -1,5 +1,5 @@
 streamlit
-praw
+praw==8.0.2
 pandas
 openpyxl
 requests
