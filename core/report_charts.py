@@ -12,9 +12,14 @@ import json
 import re
 from typing import Any, Optional
 
-import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+
+try:
+    import plotly.graph_objects as go
+    _CHARTS_OK = True
+except Exception:  # 云端缺 plotly 时降级，避免整个应用崩溃
+    go = None
+    _CHARTS_OK = False
 
 # 经 dataviz 调色校验的分类色：
 SENTIMENT_POS = "#0d9488"   # 正面 · 青绿
@@ -139,9 +144,9 @@ def _style(fig: go.Figure, height: int = 340) -> go.Figure:
 # --------------------------------------------------------------------------
 # 图表构造（返回 Figure 或 None；数据不足即 None）
 # --------------------------------------------------------------------------
-def sentiment_donut(sentiment: Any) -> Optional[go.Figure]:
+def sentiment_donut(sentiment: Any) -> Optional["go.Figure"]:
     """情感分布环形图（正/负/中）。"""
-    if not isinstance(sentiment, dict):
+    if not _CHARTS_OK or not isinstance(sentiment, dict):
         return None
     keys = ["positive", "negative", "neutral"]
     labels = ["正面", "负面", "中性"]
@@ -167,9 +172,9 @@ def sentiment_donut(sentiment: Any) -> Optional[go.Figure]:
     return _style(fig, height=320)
 
 
-def _hbar(rows: list[tuple[str, float]], title: str, color: str, x_title: str, hover: str) -> Optional[go.Figure]:
+def _hbar(rows: list[tuple[str, float]], title: str, color: str, x_title: str, hover: str) -> Optional["go.Figure"]:
     """通用横向条形图。rows 为 (标签, 数值)；按数值升序（最大者显示在顶部）。"""
-    if not rows:
+    if not _CHARTS_OK or not rows:
         return None
     rows = sorted(rows, key=lambda r: r[1])
     labels = [r[0] for r in rows]
@@ -236,17 +241,17 @@ def _post_timestamps(dataframe: pd.DataFrame) -> Optional[pd.Series]:
     return ts if not ts.empty else None
 
 
-def posting_heatmap(dataframe: Optional[pd.DataFrame]) -> Optional[go.Figure]:
+def posting_heatmap(dataframe: Optional[pd.DataFrame]) -> Optional["go.Figure"]:
     """发帖时段热力图（星期 × 小时），纯从抓取数据计算。"""
-    if dataframe is None or getattr(dataframe, "empty", True):
+    if not _CHARTS_OK or dataframe is None or getattr(dataframe, "empty", True):
         return None
     ts = _post_timestamps(dataframe)
     if ts is None:
         return None
 
-    matrix = np.zeros((7, 24), dtype=int)
+    matrix = [[0] * 24 for _ in range(7)]
     for weekday, hour in zip(ts.dt.dayofweek, ts.dt.hour):
-        matrix[int(weekday), int(hour)] += 1
+        matrix[int(weekday)][int(hour)] += 1
 
     days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     fig = go.Figure(
@@ -266,9 +271,9 @@ def posting_heatmap(dataframe: Optional[pd.DataFrame]) -> Optional[go.Figure]:
     return fig
 
 
-def comparison_radar(radar: Any, user_label: str, competitor_label: str) -> Optional[go.Figure]:
+def comparison_radar(radar: Any, user_label: str, competitor_label: str) -> Optional["go.Figure"]:
     """你的品牌 vs 竞品 的维度雷达图。"""
-    if not isinstance(radar, dict):
+    if not _CHARTS_OK or not isinstance(radar, dict):
         return None
     dims = radar.get("dimensions")
     user = radar.get("user_brand")
@@ -310,9 +315,9 @@ def comparison_radar(radar: Any, user_label: str, competitor_label: str) -> Opti
     return _style(fig, height=380)
 
 
-def engagement_scatter(dataframe: Optional[pd.DataFrame]) -> Optional[go.Figure]:
+def engagement_scatter(dataframe: Optional[pd.DataFrame]) -> Optional["go.Figure"]:
     """互动分布散点图（Score × 评论数），纯从抓取数据计算。"""
-    if dataframe is None or getattr(dataframe, "empty", True):
+    if not _CHARTS_OK or dataframe is None or getattr(dataframe, "empty", True):
         return None
     if "score" not in dataframe or "num_comments" not in dataframe:
         return None
@@ -346,6 +351,10 @@ def render_competitor_charts(
     """在 Streamlit 中渲染竞品分析图表看板。payload 为空时仍尝试渲染数据类图表。"""
     import streamlit as st
 
+    if not _CHARTS_OK:
+        st.info("图表库（plotly）暂未就绪，本次仅显示文字报告。请在右下角 Manage app → Reboot 重启应用以完成安装。")
+        return
+
     scatter = engagement_scatter(dataframe)
 
     if not payload:
@@ -377,6 +386,10 @@ def render_competitor_charts(
 def render_content_ops_charts(payload: Optional[dict], dataframe: Optional[pd.DataFrame]) -> None:
     """在 Streamlit 中渲染内容运营图表看板。payload 为空时仍渲染时段/互动等数据类图表。"""
     import streamlit as st
+
+    if not _CHARTS_OK:
+        st.info("图表库（plotly）暂未就绪，本次仅显示文字报告。请在右下角 Manage app → Reboot 重启应用以完成安装。")
+        return
 
     heatmap = posting_heatmap(dataframe)
     scatter = engagement_scatter(dataframe)
