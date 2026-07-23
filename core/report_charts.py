@@ -12,6 +12,7 @@ import json
 import re
 from typing import Any, Optional
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -166,21 +167,11 @@ def sentiment_donut(sentiment: Any) -> Optional[go.Figure]:
     return _style(fig, height=320)
 
 
-def mentions_bar(items: Any, title: str, color: str) -> Optional[go.Figure]:
-    """优势/劣势横向条形图，按被提及次数排序。"""
-    if not isinstance(items, list):
-        return None
-    rows = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        point = str(item.get("point", "")).strip()
-        if point:
-            rows.append((point, _safe_int(item.get("mentions"))))
+def _hbar(rows: list[tuple[str, float]], title: str, color: str, x_title: str, hover: str) -> Optional[go.Figure]:
+    """通用横向条形图。rows 为 (标签, 数值)；按数值升序（最大者显示在顶部）。"""
     if not rows:
         return None
-
-    rows.sort(key=lambda r: r[1])  # 升序：横向图中最大者显示在顶部
+    rows = sorted(rows, key=lambda r: r[1])
     labels = [r[0] for r in rows]
     vals = [r[1] for r in rows]
 
@@ -193,14 +184,85 @@ def mentions_bar(items: Any, title: str, color: str) -> Optional[go.Figure]:
             text=vals,
             textposition="outside",
             textfont=dict(family=_FONT, size=12),
-            hovertemplate="%{y}：被提及 %{x} 次<extra></extra>",
+            hovertemplate=hover,
             width=0.62,
         )
     )
     fig.update_layout(title=title, showlegend=False, bargap=0.35)
     _style(fig, height=max(220, 48 * len(rows) + 90))
-    fig.update_xaxes(title="被提及次数", rangemode="tozero")
+    fig.update_xaxes(title=x_title, rangemode="tozero")
     fig.update_yaxes(showgrid=False, automargin=True)
+    return fig
+
+
+def _collect(items: Any, label_key: str, value_key: str) -> list[tuple[str, int]]:
+    """从 [{label_key:..., value_key:...}] 中抽取 (标签, 整数值)。"""
+    rows = []
+    if not isinstance(items, list):
+        return rows
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get(label_key, "")).strip()
+        if label:
+            rows.append((label, _safe_int(item.get(value_key))))
+    return rows
+
+
+def mentions_bar(items: Any, title: str, color: str) -> Optional[go.Figure]:
+    """优势/劣势横向条形图，按被提及次数排序。"""
+    return _hbar(_collect(items, "point", "mentions"), title, color, "被提及次数", "%{y}：被提及 %{x} 次<extra></extra>")
+
+
+def topics_bar(items: Any, color: str = RADAR_USER) -> Optional[go.Figure]:
+    """热门话题 Top5 横向条形图（按热度）。"""
+    return _hbar(_collect(items, "topic", "heat"), "热门话题 Top5（热度）", color, "热度", "%{y}：热度 %{x}<extra></extra>")
+
+
+def features_bar(items: Any, color: str = SENTIMENT_POS) -> Optional[go.Figure]:
+    """高互动内容特征横向条形图（按出现频次）。"""
+    return _hbar(_collect(items, "feature", "count"), "高互动内容特征（出现频次）", color, "出现次数", "%{y}：出现 %{x} 次<extra></extra>")
+
+
+def _post_timestamps(dataframe: pd.DataFrame) -> Optional[pd.Series]:
+    """从 created_utc（优先）或 post_time 解析出 datetime 序列。"""
+    if "created_utc" in dataframe:
+        ts = pd.to_datetime(dataframe["created_utc"], unit="s", errors="coerce")
+    elif "post_time" in dataframe:
+        ts = pd.to_datetime(dataframe["post_time"], errors="coerce")
+    else:
+        return None
+    ts = ts.dropna()
+    return ts if not ts.empty else None
+
+
+def posting_heatmap(dataframe: Optional[pd.DataFrame]) -> Optional[go.Figure]:
+    """发帖时段热力图（星期 × 小时），纯从抓取数据计算。"""
+    if dataframe is None or getattr(dataframe, "empty", True):
+        return None
+    ts = _post_timestamps(dataframe)
+    if ts is None:
+        return None
+
+    matrix = np.zeros((7, 24), dtype=int)
+    for weekday, hour in zip(ts.dt.dayofweek, ts.dt.hour):
+        matrix[int(weekday), int(hour)] += 1
+
+    days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    fig = go.Figure(
+        go.Heatmap(
+            z=matrix,
+            x=[str(h) for h in range(24)],
+            y=days,
+            colorscale=[[0.0, "#eff6ff"], [0.5, "#60a5fa"], [1.0, "#1e3a8a"]],
+            hovertemplate="%{y} %{x}:00<br>发帖 %{z} 条<extra></extra>",
+            colorbar=dict(title="帖数", thickness=12, len=0.8),
+        )
+    )
+    fig.update_layout(title="发帖时段热力（星期 × 小时）")
+    _style(fig, height=320)
+    fig.update_xaxes(title="小时", dtick=2, showgrid=False)
+    fig.update_yaxes(showgrid=False, autorange="reversed")  # 周一置顶
     return fig
 
 
@@ -308,5 +370,27 @@ def render_competitor_charts(
     if weaknesses is not None:
         mid[1].plotly_chart(weaknesses, use_container_width=True)
 
+    if scatter is not None:
+        st.plotly_chart(scatter, use_container_width=True)
+
+
+def render_content_ops_charts(payload: Optional[dict], dataframe: Optional[pd.DataFrame]) -> None:
+    """在 Streamlit 中渲染内容运营图表看板。payload 为空时仍渲染时段/互动等数据类图表。"""
+    import streamlit as st
+
+    heatmap = posting_heatmap(dataframe)
+    scatter = engagement_scatter(dataframe)
+    topics = topics_bar(payload.get("hot_topics")) if payload else None
+    features = features_bar(payload.get("engagement_features")) if payload else None
+
+    if topics is not None or features is not None:
+        top = st.columns(2)
+        if topics is not None:
+            top[0].plotly_chart(topics, use_container_width=True)
+        if features is not None:
+            top[1].plotly_chart(features, use_container_width=True)
+
+    if heatmap is not None:
+        st.plotly_chart(heatmap, use_container_width=True)
     if scatter is not None:
         st.plotly_chart(scatter, use_container_width=True)

@@ -13,7 +13,11 @@ from config import (
     SUPPORTED_AI_PROVIDERS,
 )
 from core.ai_analyzer import AIAnalyzerError, build_data_summary, call_ai_api
-from core.report_charts import extract_report_payload, render_competitor_charts
+from core.report_charts import (
+    extract_report_payload,
+    render_competitor_charts,
+    render_content_ops_charts,
+)
 from core.report_generator import (
     ReportGenerationError,
     build_markdown_report,
@@ -557,7 +561,7 @@ if dataframe is not None:
                 payload, narrative = extract_report_payload(result)
                 markdown_report = build_markdown_report(report_title, report_subtitle, narrative or result)
                 st.session_state["analysis_report"] = markdown_report
-                st.session_state["analysis_payload"] = payload if analysis_type == "竞品分析" else None
+                st.session_state["analysis_payload"] = payload
                 st.session_state["analysis_kind"] = analysis_type
                 st.session_state["analysis_labels"] = {
                     "user": user_brand.strip(),
@@ -584,7 +588,8 @@ if dataframe is not None:
             unsafe_allow_html=True,
         )
 
-        if st.session_state.get("analysis_kind") == "竞品分析":
+        report_kind = st.session_state.get("analysis_kind")
+        if report_kind == "竞品分析":
             report_labels = st.session_state.get("analysis_labels", {})
             st.subheader("数据看板")
             render_competitor_charts(
@@ -592,6 +597,12 @@ if dataframe is not None:
                 st.session_state.get("scraped_data"),
                 report_labels.get("user", ""),
                 report_labels.get("competitor", ""),
+            )
+        elif report_kind == "内容运营助手":
+            st.subheader("数据看板")
+            render_content_ops_charts(
+                st.session_state.get("analysis_payload"),
+                st.session_state.get("scraped_data"),
             )
 
         st.markdown("<div class='fh-report-card'>", unsafe_allow_html=True)
