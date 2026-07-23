@@ -16,9 +16,11 @@ import pandas as pd
 
 try:
     import plotly.graph_objects as go
+    import plotly.io as pio
     _CHARTS_OK = True
 except Exception:  # 云端缺 plotly 时降级，避免整个应用崩溃
     go = None
+    pio = None
     _CHARTS_OK = False
 
 # 经 dataviz 调色校验的分类色：
@@ -407,3 +409,113 @@ def render_content_ops_charts(payload: Optional[dict], dataframe: Optional[pd.Da
         st.plotly_chart(heatmap, use_container_width=True)
     if scatter is not None:
         st.plotly_chart(scatter, use_container_width=True)
+
+
+# --------------------------------------------------------------------------
+# 图表收集（供 HTML 导出复用；顺序与看板一致）
+# --------------------------------------------------------------------------
+def competitor_figures(payload, dataframe, user_label, competitor_label):
+    """返回竞品报告的图表列表（去掉 None）。"""
+    if not _CHARTS_OK:
+        return []
+    figs = []
+    if payload:
+        figs += [
+            sentiment_donut(payload.get("sentiment")),
+            comparison_radar(payload.get("radar"), user_label, competitor_label),
+            mentions_bar(payload.get("strengths"), "竞品优势（被提及次数）", STRENGTH_COLOR),
+            mentions_bar(payload.get("weaknesses"), "竞品劣势（被提及次数）", WEAKNESS_COLOR),
+        ]
+    figs.append(engagement_scatter(dataframe))
+    return [f for f in figs if f is not None]
+
+
+def content_ops_figures(payload, dataframe):
+    """返回内容运营报告的图表列表（去掉 None）。"""
+    if not _CHARTS_OK:
+        return []
+    figs = []
+    if payload:
+        figs += [
+            topics_bar(payload.get("hot_topics")),
+            features_bar(payload.get("engagement_features")),
+        ]
+    figs += [posting_heatmap(dataframe), engagement_scatter(dataframe)]
+    return [f for f in figs if f is not None]
+
+
+# --------------------------------------------------------------------------
+# 自包含 HTML 报告导出
+# --------------------------------------------------------------------------
+_HTML_CSS = """
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #ffffff; color: #111111;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  line-height: 1.7; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 48px 28px 64px; }
+.brand { font-size: .95rem; color: #888; letter-spacing: .02em; }
+h1.title { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.03em; margin: .3rem 0 .6rem; }
+.subtitle { color: #666; font-size: 1rem; }
+.meta { color: #999; font-size: .85rem; margin-top: .4rem; }
+hr { border: none; border-top: 1px solid #ececec; margin: 2rem 0; }
+h2.section { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; margin: 2.2rem 0 1rem;
+  display: flex; align-items: center; gap: 10px; }
+h2.section::before { content: ''; width: 9px; height: 9px; border-radius: 999px; background: #111; }
+.charts { display: flex; flex-wrap: wrap; gap: 18px; }
+.chart { flex: 1 1 460px; min-width: 340px; border: 1px solid #eee; border-radius: 14px; padding: 6px; overflow-x: auto; }
+.report { border: 1px solid #ececec; border-radius: 16px; padding: 8px 26px 22px; }
+.report h1, .report h2, .report h3 { letter-spacing: -.02em; }
+.report h1 { font-size: 1.5rem; } .report h2 { font-size: 1.2rem; } .report h3 { font-size: 1.03rem; }
+.report p, .report li { color: #333; }
+.report blockquote { margin: 1rem 0; padding-left: 1rem; border-left: 3px solid #d9d9d9; color: #666; }
+.report table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+.report th, .report td { border: 1px solid #e5e5e5; padding: 8px 10px; text-align: left; font-size: .95rem; }
+.report th { background: #f7f7f7; }
+.footer { text-align: center; color: #aaa; font-size: .82rem; margin-top: 2.5rem; }
+""".strip()
+
+
+def _escape(text: str) -> str:
+    return (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def build_html_report(title: str, subtitle: str, narrative_md: str, figures: list) -> str:
+    """把图表与文字组装成一个自包含 HTML 报告（plotly.js 内联，可离线打开）。"""
+    import datetime
+
+    import markdown2
+
+    figures = [f for f in (figures or []) if f is not None]
+    chart_html = ""
+    if _CHARTS_OK and pio is not None and figures:
+        cards = []
+        for i, fig in enumerate(figures):
+            # 仅第一张内联 plotly.js，整份文件只带一份库
+            include = "inline" if i == 0 else False
+            snippet = pio.to_html(fig, include_plotlyjs=include, full_html=False,
+                                  config={"displayModeBar": False})
+            cards.append(f"<div class='chart'>{snippet}</div>")
+        chart_html = f"<h2 class='section'>数据看板</h2><div class='charts'>{''.join(cards)}</div>"
+
+    narrative_html = markdown2.markdown(
+        narrative_md or "", extras=["tables", "fenced-code-blocks", "cuddled-lists", "strike"]
+    )
+    generated_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return f"""<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{_escape(title)}</title>
+<style>{_HTML_CSS}</style></head>
+<body><div class="wrap">
+  <div class="brand">FeedbackHound · 反馈猎犬</div>
+  <h1 class="title">{_escape(title)}</h1>
+  <div class="subtitle">{_escape(subtitle)}</div>
+  <div class="meta">生成时间：{generated_at}</div>
+  <hr>
+  {chart_html}
+  <h2 class="section">分析报告</h2>
+  <div class="report">{narrative_html}</div>
+  <div class="footer">© FeedbackHound · 本报告由 AI 辅助生成，请结合业务判断使用</div>
+</div></body></html>"""

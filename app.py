@@ -14,6 +14,9 @@ from config import (
 )
 from core.ai_analyzer import AIAnalyzerError, build_data_summary, call_ai_api
 from core.report_charts import (
+    build_html_report,
+    competitor_figures,
+    content_ops_figures,
     extract_report_payload,
     render_competitor_charts,
     render_content_ops_charts,
@@ -561,6 +564,8 @@ if dataframe is not None:
                 payload, narrative = extract_report_payload(result)
                 markdown_report = build_markdown_report(report_title, report_subtitle, narrative or result)
                 st.session_state["analysis_report"] = markdown_report
+                st.session_state["analysis_narrative"] = narrative or result
+                st.session_state["analysis_meta"] = {"title": report_title, "subtitle": report_subtitle}
                 st.session_state["analysis_payload"] = payload
                 st.session_state["analysis_kind"] = analysis_type
                 st.session_state["analysis_labels"] = {
@@ -611,10 +616,40 @@ if dataframe is not None:
 
         markdown_name = st.session_state.get("analysis_markdown_name") or generate_report_filename("report", "md")
         pdf_name = generate_report_filename("report", "pdf")
+        html_name = generate_report_filename("report", "html")
+
+        report_meta = st.session_state.get("analysis_meta", {})
+        report_narrative = st.session_state.get("analysis_narrative", report)
+        report_dataframe = st.session_state.get("scraped_data")
+        report_payload = st.session_state.get("analysis_payload")
+        if report_kind == "竞品分析":
+            export_labels = st.session_state.get("analysis_labels", {})
+            export_figures = competitor_figures(
+                report_payload, report_dataframe,
+                export_labels.get("user", ""), export_labels.get("competitor", ""),
+            )
+        elif report_kind == "内容运营助手":
+            export_figures = content_ops_figures(report_payload, report_dataframe)
+        else:
+            export_figures = []
+        html_bytes = build_html_report(
+            report_meta.get("title", "FeedbackHound 报告"),
+            report_meta.get("subtitle", ""),
+            report_narrative,
+            export_figures,
+        ).encode("utf-8")
 
         st.markdown("<div class='fh-report-actions'>", unsafe_allow_html=True)
-        report_col1, report_col2 = st.columns(2)
+        report_col1, report_col2, report_col3 = st.columns(3)
         report_col1.download_button(
+            "下载 HTML（含图表）",
+            data=html_bytes,
+            file_name=html_name,
+            mime="text/html",
+            use_container_width=True,
+            type="primary",
+        )
+        report_col2.download_button(
             "下载 Markdown",
             data=markdown_to_bytes(report),
             file_name=markdown_name,
@@ -624,7 +659,7 @@ if dataframe is not None:
 
         try:
             pdf_bytes = markdown_to_pdf_bytes(report)
-            report_col2.download_button(
+            report_col3.download_button(
                 "下载 PDF",
                 data=pdf_bytes,
                 file_name=pdf_name,
@@ -633,11 +668,11 @@ if dataframe is not None:
             )
         except ReportGenerationError as exc:
             st.session_state["analysis_pdf_error"] = str(exc)
-            report_col2.button("下载 PDF", disabled=True, use_container_width=True)
+            report_col3.button("下载 PDF", disabled=True, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
         if st.session_state.get("analysis_pdf_error"):
-            st.warning(st.session_state["analysis_pdf_error"])
+            st.caption("提示：PDF 依赖系统组件，云端可能不可用；推荐使用「下载 HTML（含图表）」，可在浏览器里再另存为 PDF。")
 
     st.markdown("</section>", unsafe_allow_html=True)
 

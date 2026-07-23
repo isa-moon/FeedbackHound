@@ -53,6 +53,8 @@ SESSION_DEFAULTS = {
     "scraped_data": None,
     "scrape_summary": {},
     "analysis_report": "",
+    "analysis_narrative": "",
+    "analysis_meta": {},
     "analysis_payload": None,
     "analysis_kind": "",
     "analysis_labels": {},
