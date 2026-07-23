@@ -145,17 +145,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### 环境变量（可选）
-
-项目已内置 Reddit 凭证，默认无需配置。如需替换为自己的，在项目根目录创建 `.env`：
-
-```env
-REDDIT_CLIENT_ID=your_client_id
-REDDIT_CLIENT_SECRET=your_client_secret
-REDDIT_USER_AGENT=python:feedbackhound:v1.0 (by /u/yourname)
-```
-
-> 部署到 Streamlit Cloud 时，请改在 **Settings → Secrets** 中配置以上三项（云端不读取 `.env`）。
 
 ### 自行申请 Reddit 凭证
 
